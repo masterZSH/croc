@@ -4,14 +4,14 @@
     src="https://user-images.githubusercontent.com/6550035/46709024-9b23ad00-cbf6-11e8-9fb2-ca8b20b7dbec.jpg"
     width="408px" border="0" alt="croc">
 <br>
-<a href="https://github.com/schollz/croc/releases/latest"><img src="https://img.shields.io/badge/version-v8.3.1-brightgreen.svg?style=flat-square" alt="Version"></a>
+<a href="https://github.com/schollz/croc/releases/latest"><img src="https://img.shields.io/badge/version-v8.4.0-brightgreen.svg?style=flat-square" alt="Version"></a>
 <a href="https://coveralls.io/github/schollz/croc"><img src="https://img.shields.io/badge/coverage-81%25-green.svg?style=flat-square" alt="Coverage"></a>
 <a href="https://travis-ci.org/schollz/croc"><img
 src="https://img.shields.io/travis/schollz/croc.svg?style=flat-square" alt="Build
 Status"></a> 
 </p>
 
-`croc` is a tool that allows any two computers to simply and securely transfer files and folders. AFAIK, *croc* is the only CLI file-transfer tool does **all** of the following:
+`croc` is a tool that allows any two computers to simply and securely transfer files and folders. AFAIK, *croc* is the only CLI file-transfer tool that does **all** of the following:
 
 - allows **any two computers** to transfer data (using a relay)
 - provides **end-to-end encryption** (using PAKE)
@@ -19,7 +19,6 @@ Status"></a>
 - allows **multiple file** transfers
 - allows **resuming transfers** that are interrupted
 - local server or port-forwarding **not needed**
-- **faster** than [wormhole](https://github.com/warner/magic-wormhole), [rsync](https://linux.die.net/man/1/rsync), [scp](https://linux.die.net/man/1/scp) through compression and multiplexing (speedups 1.5x to 4x)
 - **ipv6-first** with ipv4 fallback
 
 For more information about `croc`, see [my blog post](https://schollz.com/software/croc6).
@@ -38,7 +37,7 @@ $ curl https://getcroc.schollz.com | bash
 On macOS you can install the latest release with [Homebrew](https://brew.sh/): 
 
 ```
-$ brew install schollz/tap/croc
+$ brew install croc
 ```
 
 On macOS you can also install the latest release with [MacPorts](https://macports.org/): 
@@ -48,10 +47,14 @@ $ sudo port selfupdate
 $ sudo port install croc
 ```
 
-On Windows you can install the latest release with [Scoop](https://scoop.sh/): 
+On Windows you can install the latest release with [Scoop](https://scoop.sh/) or [Chocolatey](https://chocolatey.org): 
 
 ```
 $ scoop install croc
+```
+
+```
+$ choco install croc
 ```
 
 On Unix you can install the latest release with [Nix](https://nixos.org/nix):
@@ -73,7 +76,18 @@ On Ubuntu you can install with `snap`:
 $ snap install croc
 ```
 
+On Gentoo you can install with `portage`:
+```
+$ emerge net-misc/croc
+```
+
 On Termux you can install with `pkg`:
+
+```
+$ pkg install croc
+```
+
+On FreeBSD you can install with `pkg`:
 
 ```
 $ pkg install croc

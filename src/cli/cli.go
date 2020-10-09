@@ -13,18 +13,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/schollz/cli/v2"
+	"github.com/schollz/croc/v8/src/comm"
 	"github.com/schollz/croc/v8/src/croc"
 	"github.com/schollz/croc/v8/src/models"
 	"github.com/schollz/croc/v8/src/tcp"
 	"github.com/schollz/croc/v8/src/utils"
 	log "github.com/schollz/logger"
-	"github.com/urfave/cli/v2"
 )
 
 // Version specifies the version
 var Version string
 
-// Run will run the command line proram
+// Run will run the command line program
 func Run() (err error) {
 	// use all of the processors
 	runtime.GOMAXPROCS(runtime.NumCPU())
@@ -32,7 +33,7 @@ func Run() (err error) {
 	app := cli.NewApp()
 	app.Name = "croc"
 	if Version == "" {
-		Version = "v8.3.1-9d5302b"
+		Version = "v8.4.0-224c442"
 	}
 	app.Version = Version
 	app.Compiled = time.Now()
@@ -84,15 +85,29 @@ func Run() (err error) {
 		&cli.StringFlag{Name: "relay6", Value: models.DEFAULT_RELAY6, Usage: "ipv6 address of the relay", EnvVars: []string{"CROC_RELAY6"}},
 		&cli.StringFlag{Name: "out", Value: ".", Usage: "specify an output folder to receive the file"},
 		&cli.StringFlag{Name: "pass", Value: "pass123", Usage: "password for the relay", EnvVars: []string{"CROC_PASS"}},
+		&cli.StringFlag{Name: "socks5", Value: "", Usage: "add a socks5 proxy", EnvVars: []string{"http_proxy"}},
 	}
 	app.EnableBashCompletion = true
 	app.HideHelp = false
 	app.HideVersion = false
 	app.Action = func(c *cli.Context) error {
+		allStringsAreFiles := func(strs []string) bool {
+			for _, str := range strs {
+				if !utils.Exists(str) {
+					return false
+				}
+			}
+			return true
+		}
+
 		// if trying to send but forgot send, let the user know
-		if c.Args().First() != "" && utils.Exists(c.Args().First()) {
-			_, fname := filepath.Split(c.Args().First())
-			yn := utils.GetInput(fmt.Sprintf("Did you mean to send '%s'? (y/n) ", fname))
+		if c.Args().Present() && allStringsAreFiles(c.Args().Slice()) {
+			fnames := []string{}
+			for _, fpath := range c.Args().Slice() {
+				_, basename := filepath.Split(fpath)
+				fnames = append(fnames, "'"+basename+"'")
+			}
+			yn := utils.GetInput(fmt.Sprintf("Did you mean to send %s? (y/n) ", strings.Join(fnames, ", ")))
 			if strings.ToLower(yn) == "y" {
 				return send(c)
 			}
@@ -146,6 +161,7 @@ func determinePass(c *cli.Context) (pass string) {
 
 func send(c *cli.Context) (err error) {
 	setDebugLevel(c)
+	comm.Socks5Proxy = c.String("socks5")
 	crocOptions := croc.Options{
 		SharedSecret:   c.String("code"),
 		IsSender:       true,
@@ -219,7 +235,7 @@ func send(c *cli.Context) (err error) {
 		}()
 
 	} else {
-		fnames = append([]string{c.Args().First()}, c.Args().Tail()...)
+		fnames = c.Args().Slice()
 	}
 	if len(fnames) == 0 {
 		return errors.New("must specify file: croc send [filename]")
@@ -343,6 +359,7 @@ func saveConfig(c *cli.Context, crocOptions croc.Options) {
 }
 
 func receive(c *cli.Context) (err error) {
+	comm.Socks5Proxy = c.String("socks5")
 	crocOptions := croc.Options{
 		SharedSecret:  c.String("code"),
 		IsSender:      false,

@@ -4,11 +4,16 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io"
 	"net"
 	"time"
 
+	"github.com/schollz/croc/v8/src/utils"
 	log "github.com/schollz/logger"
+	"golang.org/x/net/proxy"
 )
+
+var Socks5Proxy = ""
 
 const MAXBYTES = 4000000
 
@@ -23,7 +28,18 @@ func NewConnection(address string, timelimit ...time.Duration) (c *Comm, err err
 	if len(timelimit) > 0 {
 		tlimit = timelimit[0]
 	}
-	connection, err := net.DialTimeout("tcp", address, tlimit)
+	var connection net.Conn
+	if Socks5Proxy != "" && !utils.IsLocalIP(address) {
+		var dialer proxy.Dialer
+		dialer, err = proxy.SOCKS5("tcp", Socks5Proxy, nil, proxy.Direct)
+		if err != nil {
+			err = fmt.Errorf("proxy failed: %w", err)
+			return
+		}
+		connection, err = dialer.Dial("tcp", address)
+	} else {
+		connection, err = net.DialTimeout("tcp", address, tlimit)
+	}
 	if err != nil {
 		err = fmt.Errorf("comm.NewConnection failed: %w", err)
 		return
@@ -85,22 +101,15 @@ func (c *Comm) Read() (buf []byte, numBytes int, bs []byte, err error) {
 	if err := c.connection.SetReadDeadline(time.Now().Add(3 * time.Hour)); err != nil {
 		log.Warnf("error setting read deadline: %v", err)
 	}
+	// must clear the timeout setting
+	defer c.connection.SetDeadline(time.Time{})
 
 	// read until we get 4 bytes for the header
-	var header []byte
-	numBytes = 4
-	for {
-		tmp := make([]byte, numBytes-len(header))
-		n, errRead := c.connection.Read(tmp)
-		if errRead != nil {
-			err = errRead
-			log.Debugf("initial read error: %v", err)
-			return
-		}
-		header = append(header, tmp[:n]...)
-		if numBytes == len(header) {
-			break
-		}
+	header := make([]byte, 4)
+	_, err = io.ReadFull(c.connection, header)
+	if err != nil {
+		log.Debugf("initial read error: %v", err)
+		return
 	}
 
 	var numBytesUint32 uint32
@@ -117,25 +126,16 @@ func (c *Comm) Read() (buf []byte, numBytes int, bs []byte, err error) {
 		log.Debug(err)
 		return
 	}
-	buf = make([]byte, 0)
 
 	// shorten the reading deadline in case getting weird data
 	if err := c.connection.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		log.Warnf("error setting read deadline: %v", err)
 	}
-	for {
-		// log.Debugf("bytes: %d/%d", len(buf), numBytes)
-		tmp := make([]byte, numBytes-len(buf))
-		n, errRead := c.connection.Read(tmp)
-		if errRead != nil {
-			err = errRead
-			log.Debugf("consecutive read error: %v", err)
-			return
-		}
-		buf = append(buf, tmp[:n]...)
-		if numBytes == len(buf) {
-			break
-		}
+	buf = make([]byte, numBytes)
+	_, err = io.ReadFull(c.connection, buf)
+	if err != nil {
+		log.Debugf("consecutive read error: %v", err)
+		return
 	}
 	return
 }
